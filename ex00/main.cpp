@@ -1,10 +1,11 @@
 #include "BitcoinExchange.hpp"
+#include <cstdlib>
 #include <ios>
+#include <iterator>
 #include <map>
 #include <ostream>
 #include <sstream>
 #include <string>
-#include <iomanip>
 /*
 
 Error: not a positive number.
@@ -67,6 +68,7 @@ bool	is_valid_date(std::string date)
 	int day = std::atoi(date.substr(8, 10).c_str());
 	if (year < 2009 && month < 1 && day < 12)
 		return false;
+	return true;
 }
 
 void	bitcoinexchange(std::ifstream &file)
@@ -76,13 +78,15 @@ void	bitcoinexchange(std::ifstream &file)
 	{
 		size_t pos = line.find('|');
 		if (pos == std::string::npos || 
-			line[pos +1] != ' ' && line[pos -1])
+			line[pos +1] != ' ' || line[pos -1] != ' ')
 		{
 			err_printer("Invalid line: follow exact format plz 'date | value'");
 			continue ;
 		}
 		std::string date = line.substr(0, pos -1);
-		std::string val_str = line.substr(pos +1, line.size());
+		std::string val_str = line.substr(pos +2, line.size());
+		if (date == "date" || val_str == "value")
+			continue;
 		if (!ft_isdigit(val_str))
 			err_printer("Not A Number.");
 		if (is_valid_date(date))
