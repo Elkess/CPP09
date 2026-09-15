@@ -40,7 +40,7 @@ static std::vector<std::size_t> buildJacobsthal(std::size_t limit)
     if (limit == 0)
         return sequence;
 
-    std::size_t a = 1;
+    std::size_t a = 0;
     std::size_t b = 1;
     sequence.push_back(1);
 
@@ -55,23 +55,23 @@ static std::vector<std::size_t> buildJacobsthal(std::size_t limit)
     return sequence;
 }
 
-static std::vector<unsigned int> pairSort(const std::vector<unsigned int> &source)
+static std::vector<unsigned int> mergeInsertPairSort(const std::vector<unsigned int> &source)
 {
     std::vector<unsigned int> smaller;
     std::vector<unsigned int> larger;
 
     for (std::size_t i = 0; i + 1 < source.size(); i += 2)
     {
-        unsigned int left = source[i];
-        unsigned int right = source[i + 1];
-        if (left > right)
+        unsigned int first = source[i];
+        unsigned int second = source[i + 1];
+        if (first > second)
         {
-            unsigned int tmp = left;
-            left = right;
-            right = tmp;
+            unsigned int tmp = first;
+            first = second;
+            second = tmp;
         }
-        smaller.push_back(left);
-        larger.push_back(right);
+        smaller.push_back(first);
+        larger.push_back(second);
     }
 
     if (source.size() % 2 != 0)
@@ -80,46 +80,55 @@ static std::vector<unsigned int> pairSort(const std::vector<unsigned int> &sourc
     std::sort(smaller.begin(), smaller.end());
     std::sort(larger.begin(), larger.end());
 
-    std::vector<unsigned int> result;
-    if (!larger.empty())
-        result = larger;
-    else
-        result = smaller;
+    std::vector<unsigned int> ordered;
+    if (smaller.empty())
+        return ordered;
 
-    std::vector<std::size_t> jacobsthal = buildJacobsthal(smaller.size());
-    std::vector<bool> inserted(smaller.size(), false);
+    ordered.push_back(smaller[0]);
+
+    std::vector<unsigned int> remainingSmaller(smaller.begin() + 1, smaller.end());
+    std::vector<std::size_t> jacobsthal = buildJacobsthal(remainingSmaller.size());
+    std::vector<bool> inserted(remainingSmaller.size(), false);
 
     for (std::size_t i = 0; i < jacobsthal.size(); ++i)
     {
         std::size_t index = jacobsthal[i];
-        if (index >= smaller.size())
+        if (index >= remainingSmaller.size())
             continue;
         if (inserted[index])
             continue;
 
-        std::vector<unsigned int>::iterator insertPos = std::lower_bound(
-            result.begin(), result.end(), smaller[index]);
-        result.insert(insertPos, smaller[index]);
+        std::vector<unsigned int>::iterator pos = std::lower_bound(
+            ordered.begin(), ordered.end(), remainingSmaller[index]);
+        ordered.insert(pos, remainingSmaller[index]);
         inserted[index] = true;
     }
 
-    for (std::size_t i = 0; i < smaller.size(); ++i)
+    for (std::size_t i = 0; i < remainingSmaller.size(); ++i)
     {
         if (inserted[i])
             continue;
-        std::vector<unsigned int>::iterator insertPos = std::lower_bound(
-            result.begin(), result.end(), smaller[i]);
-        result.insert(insertPos, smaller[i]);
+
+        std::vector<unsigned int>::iterator pos = std::lower_bound(
+            ordered.begin(), ordered.end(), remainingSmaller[i]);
+        ordered.insert(pos, remainingSmaller[i]);
     }
 
-    return result;
+    for (std::size_t i = 0; i < larger.size(); ++i)
+    {
+        std::vector<unsigned int>::iterator pos = std::lower_bound(
+            ordered.begin(), ordered.end(), larger[i]);
+        ordered.insert(pos, larger[i]);
+    }
+
+    return ordered;
 }
 
 void mergeInsertSortVector(std::vector<unsigned int> &numbers)
 {
     if (numbers.size() < 2)
         return;
-    numbers = pairSort(numbers);
+    numbers = mergeInsertPairSort(numbers);
 }
 
 void mergeInsertSortList(std::list<unsigned int> &numbers)
@@ -131,7 +140,7 @@ void mergeInsertSortList(std::list<unsigned int> &numbers)
     for (std::list<unsigned int>::iterator it = numbers.begin(); it != numbers.end(); ++it)
         temp.push_back(*it);
 
-    temp = pairSort(temp);
+    temp = mergeInsertPairSort(temp);
 
     numbers.clear();
     for (std::size_t i = 0; i < temp.size(); ++i)

@@ -18,9 +18,9 @@ std::string BitcoinExchange::trim(const std::string &input)
     std::string::size_type start = 0;
     std::string::size_type end = input.size();
 
-    while (start < end && (input[start] == ' ' || input[start] == '\t'))
+    while (start < end && (input[start] == ' ' || input[start] == '\t' || input[start] == '\r' || input[start] == '\n'))
         ++start;
-    while (end > start && (input[end - 1] == ' ' || input[end - 1] == '\t'))
+    while (end > start && (input[end - 1] == ' ' || input[end - 1] == '\t' || input[end - 1] == '\r' || input[end - 1] == '\n'))
         --end;
     return input.substr(start, end - start);
 }

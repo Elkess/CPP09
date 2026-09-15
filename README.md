@@ -72,32 +72,83 @@ If the stack has not enough elements, the token sequence is invalid, or there ar
 ## Exercise 02: PmergeMe
 
 ### Goal
-Sort a sequence of positive integers using a merge-insert style algorithm and compare two STL containers:
+Sort a positive integer sequence using the Ford-Johnson merge-insertion algorithm, and compare the result using two STL containers:
 - `std::vector`
 - `std::list`
 
-The subject requires a merge-insert algorithm and also asks for explicit timing output for both containers.
+This exercise is not a plain merge sort. The subject specifically asks for the Ford-Johnson strategy described in "The Art of Computer Programming, Volume 3: Sorting and Searching" (merge insertion, pairs, Jacobsthal numbers, and binary insertion).
+
+### Why this algorithm matters
+Ford-Johnson is designed to reduce the number of comparisons when sorting large inputs. The main idea is:
+1. create sorted pairs,
+2. build a main ordered structure from the smaller elements of each pair,
+3. insert the larger elements using carefully chosen gaps,
+4. finish with a final insertion pass based on binary search.
+
+This is why the subject explicitly mentions:
+- the role of pairs,
+- the Jacobsthal sequence,
+- binary search.
 
 ### STL usage
-This project uses two distinct containers to compare performance and behavior:
+This project uses two containers to compare their behavior and performance:
 
-- `std::vector`: random-access container, better for contiguous memory access and lower overhead,
-- `std::list`: linked-list container, good for frequent insertions and removals, but slower to access by index.
+- `std::vector`: uses contiguous memory and supports efficient random access, which makes binary search and insertion easier to implement efficiently.
+- `std::list`: stores nodes individually, which is useful for insertion-heavy algorithms, but it is slower for indexed access.
 
-The algorithm is implemented using merge-sort style splitting and insertion into ordered ranges.
+The point is not to choose the "best" container for the algorithm, but to show that the same algorithm can be implemented with two different STL structures and compared by time.
 
-### Why these containers
-The exercise explicitly asks to use at least two containers and to compare their sorting cost. Using `vector` and `list` makes the comparison meaningful because they have different internal structure and performance trade-offs.
+### The actual Ford-Johnson structure
+The algorithm follows this structure:
 
-### Parsing logic
-The program reads all arguments as positive integers, validates that they are digits only, and stores them in a `std::vector<unsigned int>`.
-A copy is made for the second container, and both are sorted independently.
+1. Pairing step
+   - the input is grouped into adjacent pairs,
+   - each pair is sorted internally,
+   - the smaller element of each pair becomes part of a smaller-element set,
+   - the larger element becomes part of a larger-element set.
 
-The logic keeps the output simple and readable:
-- first line: input sequence,
-- second line: sorted sequence,
-- then timing information for both containers.
+2. Main ordered set
+   - the smallest element is placed first,
+   - the remaining smaller elements are arranged in order,
+   - the larger elements are then inserted at strategic positions.
+
+3. Jacobsthal sequence
+   - the insertion steps do not use simple 1, 2, 3, 4...
+   - instead, they follow a Jacobsthal-like progression, which gives the best comparison pattern for merge-insertion sorting.
+   - The reason is that the algorithm tries to minimize the number of comparisons by inserting at positions that are spread out in a controlled way.
+
+4. Binary search insertion
+   - once the current insertion position is chosen, the algorithm uses binary search to find the exact location inside the already-sorted structure.
+   - This is the crucial difference from a naive insertion sort: we do not linearly scan the whole container; we jump to the correct range using the sorted order.
+
+### Why the pair logic matters
+Pairs are the foundation of Ford-Johnson. They reduce the problem to sorting smaller values and then inserting larger values in a structured order. This matters because the full algorithm is not just merge sort: it relies on reducing the data to a set of already-sorted substructures first.
+
+### Why the Jacobsthal sequence matters
+The Jacobsthal sequence is used because it produces the right spacing of insertion positions. In other words, the algorithm does not insert every element at every step; it inserts according to a computed sequence that keeps the total number of comparisons low. This is the key optimization that distinguishes Ford-Johnson from a basic insertion sort.
+
+### Why binary search matters
+After the algorithm selects the next insertion target, it must find where that value belongs among the already sorted elements. Binary search is ideal because it cuts the search space in half at each step, making the insertion efficient and consistent with the algorithm design.
+
+### Parsing logic for PmergeMe
+The program does the following:
+1. reads all arguments,
+2. validates that each argument is a positive integer,
+3. stores the numbers in a `std::vector<unsigned int>`,
+4. creates a second container copy using `std::list`,
+5. sorts both independently,
+6. prints the input sequence and the final sorted sequence,
+7. prints the measured runtime for both containers.
+
+### Output design
+The subject requires a clear, explicit output:
+- first line: initial unsorted sequence
+- second line: sorted sequence
+- third line: time for the first container
+- final line: time for the second container
+
+This is implemented so the comparison is easy to read and the performance difference between the two STL containers is visible immediately.
 
 ## Overall notes
 
-The implementations were kept intentionally explicit and readable so the parsing logic is easy to follow, and each exercise uses the STL container that best matches the problem constraints.
+The point of this module is not only to sort correctly, but to understand that STL containers are chosen for specific algorithmic behavior. In PmergeMe, the algorithmic structure is tied to the idea of merge-insertion, and the container choice affects how easily the algorithm can perform pairing, binary-search insertion, and measured timing comparisons.

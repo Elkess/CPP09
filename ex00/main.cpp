@@ -58,8 +58,9 @@ int main(int argc, char **argv)
 
         if (!extractRow(line, date, valueText))
         {
-            if (!line.empty() && line != "date | value")
-                std::cerr << "Error: bad input => " << BitcoinExchange::trim(line) << std::endl;
+            std::string cleaned = BitcoinExchange::trim(line);
+            if (!cleaned.empty() && cleaned != "date | value")
+                std::cerr << "Error: bad input => " << cleaned << std::endl;
             continue;
         }
 
