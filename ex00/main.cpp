@@ -1,117 +1,100 @@
 #include "BitcoinExchange.hpp"
-#include <cstdlib>
-#include <ios>
-#include <iterator>
-#include <map>
-#include <ostream>
-#include <sstream>
-#include <string>
-/*
 
-Error: not a positive number.
-Error: too large a number.
-Error: bad input => 2001-42-42
-
-
-*/
-void	err_printer(std::string err)
+static std::string formatOutput(double value)
 {
-	std::cerr << "Error: " << err << std::endl;
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(10) << value;
+    std::string result = oss.str();
+
+    while (result.size() > 1 && result[result.size() - 1] == '0')
+        result.erase(result.size() - 1);
+    if (!result.empty() && result[result.size() - 1] == '.')
+        result.erase(result.size() - 1);
+    return result;
 }
 
-void	fill_db(std::map<std::string, double> &db)
+static bool extractRow(const std::string &line, std::string &date, std::string &value)
 {
-	std::ifstream data_file("data.csv");
-	if (!data_file.is_open())
-		err_printer("could not open DB file.");
+    std::string trimmed = BitcoinExchange::trim(line);
+    if (trimmed.empty() || trimmed == "date | value")
+        return false;
 
-	std::string line;
-	while (std::getline(data_file, line))
-	{
-		if (line == "date,exchange_rate")
-			continue ;
-		size_t pos = line.find(',');
-		std::string date = line.substr(0, pos); 
-		std::string exchange_rate_str = line.substr(pos + 1, line.size());
-		std::stringstream ss(exchange_rate_str);
-		double exchange_rate;
-		ss >> exchange_rate;
-		db[date] = exchange_rate;
-	}
+    std::string::size_type pipePos = trimmed.find('|');
+    if (pipePos == std::string::npos)
+        return false;
+    if (pipePos == 0 || pipePos == trimmed.size() - 1)
+        return false;
+    if (trimmed[pipePos - 1] != ' ' || trimmed[pipePos + 1] != ' ')
+        return false;
 
-	// std::map<std::string, double>::iterator it = db.begin();
-	// while (it != db.end())
-	// {
-	// 	std::cout << std::fixed <<std::setprecision(2) << it->first << " " << it->second << std::endl;
-	// 	it++;
-	// }
+    date = BitcoinExchange::trim(trimmed.substr(0, pipePos));
+    value = BitcoinExchange::trim(trimmed.substr(pipePos + 1));
+    return true;
 }
 
-bool	ft_isdigit(std::string str)
+int main(int argc, char **argv)
 {
-	size_t i=0;
-	while (str[i])
-	{
-		if (!std::isdigit(str[i]))
-			return false;
-		i++;
-	}
-	return true;
-}
+    if (argc != 2)
+    {
+        std::cerr << "Error: could not open file." << std::endl;
+        return 1;
+    }
 
-bool	is_valid_date(std::string date)
-{
-	if (date.size() != 10 || date[4] != '-' || date[7] != '-')
-		return false;
-	int year = std::atoi(date.substr(0, 4).c_str());
-	int month = std::atoi(date.substr(5, 7).c_str());
-	int day = std::atoi(date.substr(8, 10).c_str());
-	if (year < 2009 && month < 1 && day < 12)
-		return false;
-	return true;
-}
+    std::ifstream inputFile(argv[1]);
+    if (!inputFile.is_open())
+    {
+        std::cerr << "Error: could not open file." << std::endl;
+        return 1;
+    }
 
-void	bitcoinexchange(std::ifstream &file)
-{
-	std::string line;
-	while (std::getline(file, line))
-	{
-		size_t pos = line.find('|');
-		if (pos == std::string::npos || 
-			line[pos +1] != ' ' || line[pos -1] != ' ')
-		{
-			err_printer("Invalid line: follow exact format plz 'date | value'");
-			continue ;
-		}
-		std::string date = line.substr(0, pos -1);
-		std::string val_str = line.substr(pos +2, line.size());
-		if (date == "date" || val_str == "value")
-			continue;
-		if (!ft_isdigit(val_str))
-			err_printer("Not A Number.");
-		if (is_valid_date(date))
-			err_printer("bad input => " + date);
-		
-		std::stringstream ss(val_str);
-		float val;
-		if (!(ss >> val) || val > 1000)
-			err_printer("too large a number.");
-		else if (val < 0)
-			err_printer("not a positive number.");
-	}
-}
+    BitcoinExchange exchange;
+    exchange.loadDatabase("data.csv");
 
-int	main(int ac, char **av)
-{
-	if (ac == 2)
-	{
-		std::ifstream file(av[1]);
-		if (!file.is_open())
-			return err_printer("could not open file."),1;
-		std::map<std::string, double> db;
-		fill_db(db);
-		bitcoinexchange(file);
-	}
-	else
-		return err_printer("could not open file."), 1;
+    std::string line;
+    while (std::getline(inputFile, line))
+    {
+        std::string date;
+        std::string valueText;
+
+        if (!extractRow(line, date, valueText))
+        {
+            if (!line.empty() && line != "date | value")
+                std::cerr << "Error: bad input => " << BitcoinExchange::trim(line) << std::endl;
+            continue;
+        }
+
+        if (!BitcoinExchange::isValidDate(date))
+        {
+            std::cerr << "Error: bad input => " << date << std::endl;
+            continue;
+        }
+
+        double value = 0.0;
+        if (!BitcoinExchange::parseValue(valueText, value))
+        {
+            std::cerr << "Error: bad input => " << date << std::endl;
+            continue;
+        }
+        if (value < 0.0)
+        {
+            std::cerr << "Error: not a positive number." << std::endl;
+            continue;
+        }
+        if (value > 1000.0)
+        {
+            std::cerr << "Error: too large a number." << std::endl;
+            continue;
+        }
+
+        double result = 0.0;
+        if (!exchange.exchangeValue(date, value, result))
+        {
+            std::cerr << "Error: bad input => " << date << std::endl;
+            continue;
+        }
+
+        std::cout << date << " => " << formatOutput(value) << " = " << formatOutput(result) << std::endl;
+    }
+
+    return 0;
 }
